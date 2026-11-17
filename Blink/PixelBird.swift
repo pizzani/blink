@@ -52,6 +52,88 @@ enum PixelBird {
         ],
     ]
 
+    // MARK: Idle (reminders paused): standing in the menu bar, looking down at the desk,
+    // glancing around and dozing off.
+
+    /// Looking down at the desk: pupil low, beak tipped down.
+    private static let lookingDown = [
+        "..................",
+        "......##..........",
+        "....#...######....",
+        ".....##.#.....#...",
+        ".......#.......#..",
+        ".......#..........",
+        "##.....#....#..##.",
+        "#.#....#....#..###",
+        "#..#....#.....####",
+        ".#..####.....#.##.",
+        ".#............#...",
+        ".#..#..........#..",
+        ".#...##........#..",
+        "..#....##......#..",
+        "...#.##.......#...",
+        "....#........#....",
+        ".....########.....",
+        "........#.#.......",
+        "........####......",
+        "..................",
+    ]
+
+    /// Eye closed for a blink.
+    private static let blinking = [
+        "..................",
+        "......##..........",
+        "....#...######....",
+        ".....##.#.....#...",
+        ".......#.......#..",
+        ".......#.......##.",
+        "##.....#....##.###",
+        "#.#....#.......###",
+        "#..#....#.....###.",
+        ".#..####.....#....",
+        ".#............#...",
+        ".#..#..........#..",
+        ".#...##........#..",
+        "..#....##......#..",
+        "...#.##.......#...",
+        "....#........#....",
+        ".....########.....",
+        "........#.#.......",
+        "........####......",
+        "..................",
+    ]
+
+    /// Asleep: eye shut, beak tipped down.
+    private static let asleep = [
+        "..................",
+        "......##..........",
+        "....#...######....",
+        ".....##.#.....#...",
+        ".......#.......#..",
+        ".......#..........",
+        "##.....#.......##.",
+        "#.#....#...###.###",
+        "#..#....#.....####",
+        ".#..####.....#.##.",
+        ".#............#...",
+        ".#..#..........#..",
+        ".#...##........#..",
+        "..#....##......#..",
+        "...#.##.......#...",
+        "....#........#....",
+        ".....########.....",
+        "........#.#.......",
+        "........####......",
+        "..................",
+    ]
+
+    /// Sleeping "z"s rising from the bird, drawn in fine half-point pixels in the top-right corner.
+    private static let sleepZs: [(art: [String], origin: PixelArt.Pixel)] = [
+        (["###", ".#.", "###"], PixelArt.Pixel(x: 37, y: 8)),
+        (["####", "..#.", ".#..", "####"], PixelArt.Pixel(x: 39, y: 4)),
+        (["#####", "...#.", "..#..", ".#...", "#####"], PixelArt.Pixel(x: 41, y: 0)),
+    ]
+
     /// Each art character is drawn as a `scale`×`scale` block, i.e. one point.
     private static let scale = 2
 
@@ -64,6 +146,38 @@ enum PixelBird {
         return stride(from: -spriteWidth, through: PixelArt.width, by: speed).enumerated().map { step, x in
             let pose = poses[step % poses.count]
             return PixelArt.image(PixelArt.pixels(of: pose, at: PixelArt.Pixel(x: x, y: top), scale: scale))
+        }
+    }()
+
+    /// Idle loop while reminders are paused: look down, blink, glance back, then a nap. About 18 s.
+    static let idleFrames: [NSImage] = {
+        let standing = poses[1]
+        let turned = lookingDown.map { String($0.reversed()) }
+        var sequence: [(pose: [String], zs: Int)] = []
+        func hold(_ pose: [String], _ frames: Int) {
+            sequence += Array(repeating: (pose, 0), count: frames)
+        }
+        hold(lookingDown, 14)
+        hold(blinking, 1)
+        hold(lookingDown, 10)
+        hold(standing, 6)
+        hold(turned, 12)
+        hold(standing, 4)
+        hold(blinking, 1)
+        hold(lookingDown, 12)
+        for _ in 0..<5 {
+            for zs in 1...sleepZs.count {
+                sequence += Array(repeating: (asleep, zs), count: 4)
+            }
+        }
+        hold(blinking, 1)
+
+        return sequence.map { pose, zs in
+            var pixels = PixelArt.pixels(of: pose, scale: scale)
+            for z in sleepZs.prefix(zs) {
+                pixels.formUnion(PixelArt.pixels(of: z.art, at: z.origin))
+            }
+            return PixelArt.image(pixels)
         }
     }()
 }

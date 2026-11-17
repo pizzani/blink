@@ -22,11 +22,14 @@ final class StatusItemController: NSObject {
         case writing
         /// Break: only the bird, running past again and again.
         case bird
+        /// Reminders paused: the bird stands around, looks down at the desk and naps.
+        case idle
 
         @MainActor var frames: [NSImage] {
             switch self {
             case .writing: MenuBarAnimation.frames
             case .bird: PixelBird.frames
+            case .idle: PixelBird.idleFrames
             }
         }
     }
@@ -101,15 +104,17 @@ final class StatusItemController: NSObject {
         if let button = statusItem.button {
             button.title = scheduler.countdownText.map { " \($0)" } ?? ""
         }
-        // The hand writes while the countdown runs, the bird runs during a break,
-        // and a static eye shows when the countdown is stopped.
+        // The hand writes while the countdown runs, the bird runs during a break, the bird
+        // idles while paused, and a static eye shows when the countdown is otherwise stopped.
         if scheduler.isOnBreak {
             startAnimation(.bird)
         } else if scheduler.countdownText != nil {
             startAnimation(.writing)
+        } else if scheduler.isPaused {
+            startAnimation(.idle)
         } else {
             stopAnimation()
-            let image = NSImage(systemSymbolName: scheduler.isPaused ? "eye.slash" : "eye", accessibilityDescription: "Blink")
+            let image = NSImage(systemSymbolName: "eye", accessibilityDescription: "Blink")
             image?.isTemplate = true
             statusItem.button?.image = image
         }
