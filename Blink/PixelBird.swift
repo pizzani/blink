@@ -134,6 +134,27 @@ enum PixelBird {
         (["#####", "...#.", "..#..", ".#...", "#####"], PixelArt.Pixel(x: 41, y: 0)),
     ]
 
+    // MARK: Waiting (break over): standing on the floor, tapping a foot until the user comes back.
+
+    /// Waiting poses, one per animation tick: tap-tap-tap, a pause, a blink.
+    static let waitingPoses: [[String]] = {
+        let standing = poses[1]
+        // Front foot lifted and kicked forward; the back foot stays down.
+        var footUp = standing
+        footUp[17] = "........#..##....."
+        footUp[18] = "........##........"
+        // Foot back on the floor, with a little tap mark beside it.
+        var tap = standing
+        tap[17] = "........#.#...#..."
+        tap[18] = "........####.#...."
+        var sequence: [[String]] = []
+        for _ in 0..<3 {
+            sequence += [footUp, footUp, tap, standing]
+        }
+        sequence += Array(repeating: standing, count: 6) + [blinking] + Array(repeating: standing, count: 3)
+        return sequence
+    }()
+
     /// Each art character is drawn as a `scale`×`scale` block, i.e. one point.
     private static let scale = 2
 

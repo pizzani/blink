@@ -1,6 +1,16 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "%@ over": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ a mais"
+          }
+        }
+      }
+    },
     "Away — restarts when you're back": {
       "localizations": {
         "pt-BR": {
@@ -17,6 +27,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Duração da pausa"
+          }
+        }
+      }
+    },
+    "Break's over": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fim da pausa"
+          }
+        }
+      }
+    },
+    "Click Continue to start the next interval.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clique em Continuar para iniciar o próximo intervalo."
+          }
+        }
+      }
+    },
+    "Continue": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continuar"
           }
         }
       }
