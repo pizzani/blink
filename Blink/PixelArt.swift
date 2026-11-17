@@ -15,11 +15,16 @@ enum PixelArt {
     }
 
     /// Pixels for the `#` characters of `art`, with its top-left corner at `origin`.
-    static func pixels(of art: [String], at origin: Pixel = Pixel(x: 0, y: 0)) -> Set<Pixel> {
+    /// With `scale` 2, each character becomes a 2×2 block (a full point, for chunkier art).
+    static func pixels(of art: [String], at origin: Pixel = Pixel(x: 0, y: 0), scale: Int = 1) -> Set<Pixel> {
         var pixels = Set<Pixel>()
         for (row, line) in art.enumerated() {
             for (column, char) in line.enumerated() where char == "#" {
-                pixels.insert(Pixel(x: origin.x + column, y: origin.y + row))
+                for dx in 0..<scale {
+                    for dy in 0..<scale {
+                        pixels.insert(Pixel(x: origin.x + column * scale + dx, y: origin.y + row * scale + dy))
+                    }
+                }
             }
         }
         return pixels
