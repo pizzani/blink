@@ -1,13 +1,10 @@
 import AppKit
 
 /// Pixel-art menu bar animation: a hand with a pen writing lines on a parchment scroll.
-/// Frames are built from the ASCII art below; one character is half a point,
-/// i.e. one physical pixel on Retina, which keeps the outline thin.
+/// Frames are built from the ASCII art below (see `PixelArt` for the pixel grid).
 @MainActor
 enum PixelWriting {
-    private static let width = 46
-    private static let height = 40
-    private static let pixelSize: CGFloat = 0.5
+    private typealias Pixel = PixelArt.Pixel
 
     /// Rows of empty space above the scroll, so the pen has room on the first line.
     private static let scrollTop = 1
@@ -81,14 +78,7 @@ enum PixelWriting {
     private static let startFrames = 3
     private static let holdFrames = 8
 
-    static let frameInterval: TimeInterval = 0.15
-
     static let frames: [NSImage] = makeFrames()
-
-    private struct Pixel: Hashable {
-        let x: Int
-        let y: Int
-    }
 
     private static func makeFrames() -> [NSImage] {
         let total = lines.reduce(0) { $0 + $1.to - $1.from + 1 }
@@ -114,12 +104,7 @@ enum PixelWriting {
 
     /// The first `written` columns of text are inked; the pen lifts by `bob` pixels, like it's forming letters.
     private static func frame(written: Int, bob: Int) -> NSImage {
-        var pixels = Set<Pixel>()
-        for (row, line) in scroll.enumerated() {
-            for (column, char) in line.enumerated() where char == "#" {
-                pixels.insert(Pixel(x: column, y: row + scrollTop))
-            }
-        }
+        var pixels = PixelArt.pixels(of: scroll, at: Pixel(x: 0, y: scrollTop))
 
         var ink = Set<Pixel>()
         var remaining = written
@@ -150,18 +135,6 @@ enum PixelWriting {
         pixels.formUnion(ink.filter { $0.y == tip.y && $0.x < tip.x })
         pixels.formUnion(penPixels)
 
-        let size = NSSize(width: CGFloat(width) * pixelSize, height: CGFloat(height) * pixelSize)
-        let image = NSImage(size: size, flipped: true) { _ in
-            NSColor.black.setFill()
-            for pixel in pixels where (0..<width).contains(pixel.x) && (0..<height).contains(pixel.y) {
-                NSRect(
-                    x: CGFloat(pixel.x) * pixelSize, y: CGFloat(pixel.y) * pixelSize,
-                    width: pixelSize, height: pixelSize
-                ).fill()
-            }
-            return true
-        }
-        image.isTemplate = true
-        return image
+        return PixelArt.image(pixels)
     }
 }

@@ -94,9 +94,9 @@ final class StatusItemController: NSObject {
     private func startAnimation() {
         guard animationTimer == nil else { return }
         animationFrame = 0
-        statusItem.button?.image = PixelWriting.frames[0]
+        statusItem.button?.image = MenuBarAnimation.frames[0]
         // .common mode keeps it animating while the menu is open.
-        let timer = Timer(timeInterval: PixelWriting.frameInterval, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: PixelArt.frameInterval, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.advanceAnimation() }
         }
         timer.tolerance = 0.05
@@ -110,8 +110,8 @@ final class StatusItemController: NSObject {
     }
 
     private func advanceAnimation() {
-        animationFrame = (animationFrame + 1) % PixelWriting.frames.count
-        statusItem.button?.image = PixelWriting.frames[animationFrame]
+        animationFrame = (animationFrame + 1) % MenuBarAnimation.frames.count
+        statusItem.button?.image = MenuBarAnimation.frames[animationFrame]
     }
 
     @objc private func selectInterval(_ sender: NSMenuItem) {
