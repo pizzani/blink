@@ -10,6 +10,7 @@ final class StatusItemController: NSObject {
 
     private let statusMenuItem = NSMenuItem()
     private let pauseMenuItem = NSMenuItem()
+    private let awayMenuItem = NSMenuItem()
     private var intervalMenuItems: [NSMenuItem] = []
     private var breakMenuItems: [NSMenuItem] = []
 
@@ -60,6 +61,11 @@ final class StatusItemController: NSObject {
             to: menu, title: String(localized: "Break length"), options: ReminderScheduler.breakOptions, action: #selector(selectBreak(_:))
         )
 
+        awayMenuItem.title = String(localized: "Pause when away")
+        awayMenuItem.target = self
+        awayMenuItem.action = #selector(toggleAwayPause)
+        menu.addItem(awayMenuItem)
+
         pauseMenuItem.target = self
         pauseMenuItem.action = #selector(togglePause)
         menu.addItem(pauseMenuItem)
@@ -102,7 +108,10 @@ final class StatusItemController: NSObject {
 
     private func render() {
         if let button = statusItem.button {
-            button.title = scheduler.countdownText.map { " \($0)" } ?? ""
+            // ⇄ marks that time away from this Mac still counts (working on another machine).
+            let marker = scheduler.pauseWhenAway ? "" : " ⇄"
+            button.title = (scheduler.countdownText.map { " \($0)" } ?? "") + marker
+            button.toolTip = scheduler.pauseWhenAway ? nil : String(localized: "Counting while away")
         }
         // The hand writes while the countdown runs, the bird runs during a break, the bird
         // idles while paused, and a static eye shows when the countdown is otherwise stopped.
@@ -120,6 +129,7 @@ final class StatusItemController: NSObject {
         }
 
         statusMenuItem.title = scheduler.statusText
+        awayMenuItem.state = scheduler.pauseWhenAway ? .on : .off
         pauseMenuItem.title = scheduler.isPaused ? String(localized: "Resume reminders") : String(localized: "Pause reminders")
         for item in intervalMenuItems {
             item.state = item.tag == scheduler.intervalSeconds ? .on : .off
@@ -166,6 +176,10 @@ final class StatusItemController: NSObject {
 
     @objc private func togglePause() {
         scheduler.isPaused.toggle()
+    }
+
+    @objc private func toggleAwayPause() {
+        scheduler.pauseWhenAway.toggle()
     }
 
     @objc private func showReminder() {

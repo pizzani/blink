@@ -61,6 +61,16 @@
         }
       }
     },
+    "Counting while away": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contando mesmo ausente"
+          }
+        }
+      }
+    },
     "Look at something ~6 m (20 ft) away.": {
       "localizations": {
         "pt-BR": {
@@ -87,6 +97,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pausar lembretes"
+          }
+        }
+      }
+    },
+    "Pause when away": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausar quando ausente"
           }
         }
       }

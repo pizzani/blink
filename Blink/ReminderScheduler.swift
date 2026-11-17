@@ -21,6 +21,7 @@ final class ReminderScheduler {
     private static let intervalKey = "intervalSeconds"
     private static let pausedKey = "isPaused"
     private static let breakKey = "breakSeconds"
+    private static let pauseWhenAwayKey = "pauseWhenAway"
 
     var intervalSeconds: Int {
         didSet {
@@ -37,6 +38,14 @@ final class ReminderScheduler {
         didSet {
             UserDefaults.standard.set(isPaused, forKey: Self.pausedKey)
             reschedule()
+        }
+    }
+
+    /// When off, time without input on this Mac still counts (e.g. working on another machine).
+    var pauseWhenAway: Bool {
+        didSet {
+            UserDefaults.standard.set(pauseWhenAway, forKey: Self.pauseWhenAwayKey)
+            checkIdle()
         }
     }
 
@@ -65,6 +74,7 @@ final class ReminderScheduler {
         isPaused = UserDefaults.standard.bool(forKey: Self.pausedKey)
         let storedBreak = UserDefaults.standard.integer(forKey: Self.breakKey)
         breakSeconds = Self.breakOptions.contains(storedBreak) ? storedBreak : 5 * 60
+        pauseWhenAway = UserDefaults.standard.object(forKey: Self.pauseWhenAwayKey) as? Bool ?? true
         panel.onClose = { [weak self] in self?.endBreak() }
     }
 
@@ -175,12 +185,10 @@ final class ReminderScheduler {
     private func checkIdle() {
         let anyInput = CGEventType(rawValue: ~0)!
         let idleSeconds = CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: anyInput)
+        let away = pauseWhenAway && idleSeconds >= Self.idleThreshold
 
-        if !isIdle, idleSeconds >= Self.idleThreshold {
-            isIdle = true
-            reschedule()
-        } else if isIdle, idleSeconds < Self.idleThreshold {
-            isIdle = false
+        if away != isIdle {
+            isIdle = away
             reschedule()
         }
     }
