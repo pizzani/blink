@@ -11,6 +11,7 @@ final class StatusItemController: NSObject {
     private let statusMenuItem = NSMenuItem()
     private let pauseMenuItem = NSMenuItem()
     private var intervalMenuItems: [NSMenuItem] = []
+    private var breakMenuItems: [NSMenuItem] = []
 
     private var animationTimer: Timer?
     private var animationFrame = 0
@@ -49,17 +50,12 @@ final class StatusItemController: NSObject {
         menu.addItem(statusMenuItem)
         menu.addItem(.separator())
 
-        let intervalMenu = NSMenu()
-        intervalMenuItems = ReminderScheduler.intervalOptions.map { seconds in
-            let item = NSMenuItem(title: Self.intervalTitle(seconds), action: #selector(selectInterval(_:)), keyEquivalent: "")
-            item.target = self
-            item.tag = seconds
-            intervalMenu.addItem(item)
-            return item
-        }
-        let intervalItem = NSMenuItem(title: "Remind every", action: nil, keyEquivalent: "")
-        intervalItem.submenu = intervalMenu
-        menu.addItem(intervalItem)
+        intervalMenuItems = addChoiceMenu(
+            to: menu, title: "Remind every", options: ReminderScheduler.intervalOptions, action: #selector(selectInterval(_:))
+        )
+        breakMenuItems = addChoiceMenu(
+            to: menu, title: "Break length", options: ReminderScheduler.breakOptions, action: #selector(selectBreak(_:))
+        )
 
         pauseMenuItem.target = self
         pauseMenuItem.action = #selector(togglePause)
@@ -73,6 +69,22 @@ final class StatusItemController: NSObject {
         menu.addItem(NSMenuItem(title: "Quit Blink", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 
         return menu
+    }
+
+    /// Adds a submenu with one item per duration (in seconds, stored in each item's tag) and returns the items.
+    private func addChoiceMenu(to menu: NSMenu, title: String, options: [Int], action: Selector) -> [NSMenuItem] {
+        let submenu = NSMenu()
+        let items = options.map { seconds in
+            let item = NSMenuItem(title: Self.durationTitle(seconds), action: action, keyEquivalent: "")
+            item.target = self
+            item.tag = seconds
+            submenu.addItem(item)
+            return item
+        }
+        let parent = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        parent.submenu = submenu
+        menu.addItem(parent)
+        return items
     }
 
     /// Re-renders whenever a scheduler property read in `render()` changes.
@@ -107,6 +119,9 @@ final class StatusItemController: NSObject {
         for item in intervalMenuItems {
             item.state = item.tag == scheduler.intervalSeconds ? .on : .off
         }
+        for item in breakMenuItems {
+            item.state = item.tag == scheduler.breakSeconds ? .on : .off
+        }
     }
 
     private func startAnimation(_ animation: Animation) {
@@ -140,6 +155,10 @@ final class StatusItemController: NSObject {
         scheduler.intervalSeconds = sender.tag
     }
 
+    @objc private func selectBreak(_ sender: NSMenuItem) {
+        scheduler.breakSeconds = sender.tag
+    }
+
     @objc private func togglePause() {
         scheduler.isPaused.toggle()
     }
@@ -148,7 +167,7 @@ final class StatusItemController: NSObject {
         scheduler.sendTest()
     }
 
-    private static func intervalTitle(_ seconds: Int) -> String {
+    private static func durationTitle(_ seconds: Int) -> String {
         seconds < 60 ? "\(seconds) s" : "\(seconds / 60) min"
     }
 }

@@ -5,17 +5,15 @@ import SwiftUI
 /// so it doesn't interrupt typing.
 @MainActor
 final class ReminderPanel {
-    static let breakSeconds = 20
-
     private var panel: NSPanel?
 
     /// Called once each time the card goes away, however it was closed.
     var onClose: (() -> Void)?
 
-    func show() {
+    func show(seconds: Int) {
         guard panel == nil else { return }
 
-        let hosting = NSHostingView(rootView: ReminderCard(seconds: Self.breakSeconds) { [weak self] in
+        let hosting = NSHostingView(rootView: ReminderCard(seconds: seconds) { [weak self] in
             self?.close()
         })
         let size = hosting.fittingSize
@@ -95,7 +93,7 @@ private struct ReminderCard: View {
                 .animation(.linear(duration: 1), value: remaining)
 
             HStack {
-                Text("\(remaining) s")
+                Text(remaining >= 60 ? String(format: "%d:%02d", remaining / 60, remaining % 60) : "\(remaining) s")
                     .font(.callout.monospacedDigit())
                     .foregroundStyle(.secondary)
                 Spacer()

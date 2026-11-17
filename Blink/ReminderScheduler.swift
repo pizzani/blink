@@ -11,18 +11,26 @@ final class ReminderScheduler {
     static let intervalOptions = [5 * 60, 10 * 60, 15 * 60, 20 * 60, 30 * 60, 45 * 60, 60 * 60]
     #endif
 
+    /// How long the reminder card stays up, in seconds.
+    static let breakOptions = [20, 30, 60, 2 * 60, 5 * 60, 10 * 60]
+
     /// No keyboard/mouse input for this long counts as a break away from the screen.
     private static let idleThreshold: TimeInterval = 5 * 60
     private static let idleCheckInterval: TimeInterval = 15
 
     private static let intervalKey = "intervalSeconds"
     private static let pausedKey = "isPaused"
+    private static let breakKey = "breakSeconds"
 
     var intervalSeconds: Int {
         didSet {
             UserDefaults.standard.set(intervalSeconds, forKey: Self.intervalKey)
             reschedule()
         }
+    }
+
+    var breakSeconds: Int {
+        didSet { UserDefaults.standard.set(breakSeconds, forKey: Self.breakKey) }
     }
 
     var isPaused: Bool {
@@ -55,6 +63,8 @@ final class ReminderScheduler {
         let stored = UserDefaults.standard.integer(forKey: Self.intervalKey)
         intervalSeconds = Self.intervalOptions.contains(stored) ? stored : 20 * 60
         isPaused = UserDefaults.standard.bool(forKey: Self.pausedKey)
+        let storedBreak = UserDefaults.standard.integer(forKey: Self.breakKey)
+        breakSeconds = Self.breakOptions.contains(storedBreak) ? storedBreak : 5 * 60
         panel.onClose = { [weak self] in self?.endBreak() }
     }
 
@@ -117,7 +127,7 @@ final class ReminderScheduler {
         guard !isOnBreak else { return }
         isOnBreak = true
         reschedule()
-        panel.show()
+        panel.show(seconds: breakSeconds)
     }
 
     /// Called when the card closes: its countdown ended, Skip was clicked, or the screen locked.
