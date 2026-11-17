@@ -1,7 +1,11 @@
 import SwiftUI
 
-/// Pixel-art view into the distance for the break card: sky with a sun and drifting
-/// clouds, a city skyline and trees. Looking far away is the point of the break.
+/// Pixel-art view into the distance for the break card: a sun and drifting clouds,
+/// a city skyline and trees. Looking far away is the point of the break.
+///
+/// Drawn like the menu bar icons: one color (the primary text color, so it adapts to
+/// light and dark) on chunky pixels. Shapes are painted back to front into a grid of
+/// layers; solid shapes keep a one-pixel gap around them so they stand out from what's behind.
 struct PixelLandscape: View {
     private static let columns = 67
     private static let rows = 28
@@ -12,127 +16,142 @@ struct PixelLandscape: View {
 
     private static let buildings: [(x: Int, width: Int, height: Int)] = [
         (1, 6, 9), (8, 4, 13), (13, 7, 7), (21, 5, 11), (27, 8, 15),
-        (36, 4, 8), (41, 6, 12), (48, 5, 6), (54, 7, 10), (62, 5, 13),
+        (41, 6, 12), (48, 5, 6), (54, 7, 10), (62, 5, 13),
     ]
 
     /// Trees in front of the buildings: trunk column and canopy radius.
-    private static let trees: [(x: Int, radius: Int)] = [(5, 4), (18, 3), (33, 4), (46, 3), (60, 4)]
+    private static let trees: [(x: Int, radius: Int)] = [(12, 2), (37, 2), (51, 2)]
+
+    private static let sun = (x: 58, y: 4, radius: 3)
 
     private static let cloud = [
-        "...###....",
-        ".#######..",
+        "..##......",
+        ".####.##..",
+        "#########.",
         "##########",
         ".########.",
     ]
 
     /// Starting column and row of each cloud; they drift right and wrap around.
-    private static let clouds: [(x: Int, y: Int)] = [(4, 3), (40, 8)]
+    private static let clouds: [(x: Int, y: Int)] = [(4, 1), (34, 3)]
 
-    private enum Palette {
-        static let sky = [Color(hex: 0x4A7BD0), Color(hex: 0x6A9BE0), Color(hex: 0x8DB9EE), Color(hex: 0xB5D6F5)]
-        static let sun = Color(hex: 0xFFD55A)
-        static let sunCore = Color(hex: 0xFFF1B0)
-        static let cloud = Color.white
-        static let cloudShade = Color(hex: 0xDCE8F5)
-        static let building = Color(hex: 0x7C8AA5)
-        static let buildingEdge = Color(hex: 0x66738C)
-        static let window = Color(hex: 0xFFE08A)
-        static let grass = Color(hex: 0x6DBE5A)
-        static let grassDark = Color(hex: 0x55A246)
-        static let leaves = Color(hex: 0x3E9B4F)
-        static let leavesLight = Color(hex: 0x5DBB63)
-        static let trunk = Color(hex: 0x8A5A3B)
+    private enum Style {
+        /// Only the edge is drawn.
+        case outline
+        /// Filled, with an optional pattern of holes (windows, leaves).
+        case solid(holes: (Int, Int) -> Bool)
     }
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 0.5)) { context in
             Canvas { canvas, _ in
                 let tick = Int(context.date.timeIntervalSinceReferenceDate * 2)
-                Self.draw(in: &canvas, tick: tick)
+                var path = Path()
+                for (index, inked) in Self.ink(tick: tick).enumerated() where inked {
+                    path.addRect(CGRect(
+                        x: CGFloat(index % Self.columns) * Self.cell, y: CGFloat(index / Self.columns) * Self.cell,
+                        width: Self.cell, height: Self.cell
+                    ))
+                }
+                canvas.fill(path, with: .color(.primary))
             }
         }
         .frame(width: CGFloat(Self.columns) * Self.cell, height: CGFloat(Self.rows) * Self.cell)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
-    private static func draw(in canvas: inout GraphicsContext, tick: Int) {
-        func fill(_ x: Int, _ y: Int, _ width: Int = 1, _ height: Int = 1, _ color: Color) {
-            canvas.fill(
-                Path(CGRect(x: CGFloat(x) * cell, y: CGFloat(y) * cell, width: CGFloat(width) * cell, height: CGFloat(height) * cell)),
-                with: .color(color)
-            )
-        }
-
-        // Sky in bands, dithered where they meet.
-        let bandHeight = (horizon + Palette.sky.count - 1) / Palette.sky.count
-        for y in 0..<horizon {
-            let band = min(y / bandHeight, Palette.sky.count - 1)
-            fill(0, y, columns, 1, Palette.sky[band])
-            if y % bandHeight == bandHeight - 1, band + 1 < Palette.sky.count {
-                for x in stride(from: y % 2, to: columns, by: 2) {
-                    fill(x, y, 1, 1, Palette.sky[band + 1])
+    /// Which cells are inked for this tick (row-major).
+    private static func ink(tick: Int) -> [Bool] {
+        // Layer per cell, painted back to front; 0 is the empty sky. styles[layer] says how to draw it.
+        var layers = [Int](repeating: 0, count: columns * rows)
+        var styles: [Style] = [.outline]
+        func paint(_ style: Style, _ isInside: (Int, Int) -> Bool) {
+            let layer = styles.count
+            styles.append(style)
+            for y in 0..<rows {
+                for x in 0..<columns where isInside(x, y) {
+                    layers[y * columns + x] = layer
                 }
             }
         }
 
-        // Sun.
-        let sun = (x: 57, y: 5)
-        for dx in -3...3 {
-            for dy in -3...3 where dx * dx + dy * dy <= 10 {
-                fill(sun.x + dx, sun.y + dy, 1, 1, dx * dx + dy * dy <= 2 ? Palette.sunCore : Palette.sun)
-            }
+        paint(.outline) { x, y in
+            let dx = x - sun.x, dy = y - sun.y
+            return dx * dx + dy * dy <= sun.radius * sun.radius + 1
         }
 
         // Clouds drift one column every other tick and wrap around.
         let cloudWidth = cloud[0].count
+        let cloudRows = cloud.map(Array.init)
         for start in clouds {
-            let x = (start.x + tick / 2) % (columns + cloudWidth) - cloudWidth
-            for (row, line) in cloud.enumerated() {
-                for (column, char) in line.enumerated() where char == "#" {
-                    fill(x + column, start.y + row, 1, 1, row == cloud.count - 1 ? Palette.cloudShade : Palette.cloud)
-                }
+            let left = (start.x + tick / 2) % (columns + cloudWidth) - cloudWidth
+            paint(.outline) { x, y in
+                let column = x - left, row = y - start.y
+                return cloudRows.indices.contains(row) && (0..<cloudWidth).contains(column) && cloudRows[row][column] == "#"
             }
         }
 
-        // Skyline with a few lit windows.
+        // Buildings: solid, with a grid of windows of which some are dark.
         for (index, building) in buildings.enumerated() {
             let top = horizon - building.height
-            fill(building.x, top, building.width, building.height, Palette.building)
-            fill(building.x + building.width - 1, top, 1, building.height, Palette.buildingEdge)
-            for y in stride(from: top + 1, to: horizon - 1, by: 2) {
-                for x in stride(from: building.x + 1, to: building.x + building.width - 1, by: 2)
-                where (x * 7 + y * 13 + index) % 3 != 0 {
-                    fill(x, y, 1, 1, Palette.window)
-                }
+            let windows: (Int, Int) -> Bool = { x, y in
+                let column = x - building.x, row = y - top
+                return column % 2 == 1 && column < building.width - 1 && row % 2 == 1 && row < building.height - 1
+                    && (x * 7 + y * 13 + index) % 3 != 0
+            }
+            paint(.solid(holes: windows)) { x, y in
+                (building.x..<building.x + building.width).contains(x) && (top..<horizon).contains(y)
             }
         }
 
-        // Ground.
-        fill(0, horizon, columns, rows - horizon, Palette.grass)
-        fill(0, rows - 2, columns, 2, Palette.grassDark)
+        paint(.outline) { _, y in y >= horizon }
 
-        // Trees: round canopy with a lighter top-left, on a short trunk.
+        // Trees: solid round canopy on a one-pixel trunk.
         for tree in trees {
-            let center = (x: tree.x, y: horizon - tree.radius)
-            fill(tree.x, horizon - 1, 1, 3, Palette.trunk)
-            let r2 = tree.radius * tree.radius + 1
-            for dx in -tree.radius...tree.radius {
-                for dy in -tree.radius...tree.radius where dx * dx + dy * dy <= r2 {
-                    let light = dx < 0 && dy < 0 && dx * dx + dy * dy >= r2 / 3
-                    fill(center.x + dx, center.y + dy, 1, 1, light ? Palette.leavesLight : Palette.leaves)
+            let centerY = horizon - tree.radius - 2
+            paint(.solid(holes: { _, _ in false })) { x, y in
+                let dx = x - tree.x, dy = y - centerY
+                return dx * dx + dy * dy <= tree.radius * tree.radius + 1 || (x == tree.x && (centerY...horizon).contains(y))
+            }
+        }
+
+        func layer(_ x: Int, _ y: Int) -> Int? {
+            (0..<columns).contains(x) && (0..<rows).contains(y) ? layers[y * columns + x] : nil
+        }
+
+        var ink = [Bool](repeating: false, count: columns * rows)
+        for y in 0..<rows {
+            for x in 0..<columns {
+                let current = layers[y * columns + x]
+                guard current > 0 else { continue }
+
+                // Leave a gap where a solid shape in front touches this one.
+                let nearSolidInFront = (-1...1).contains { dx in
+                    (-1...1).contains { dy in
+                        guard let other = layer(x + dx, y + dy), other > current else { return false }
+                        if case .solid = styles[other] { return true }
+                        return false
+                    }
+                }
+                if nearSolidInFront { continue }
+
+                switch styles[current] {
+                case .outline:
+                    ink[y * columns + x] = [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)].contains { nx, ny in
+                        (layer(nx, ny) ?? current) < current
+                    }
+                case .solid(let holes):
+                    ink[y * columns + x] = !holes(x, y)
                 }
             }
         }
-    }
-}
 
-private extension Color {
-    init(hex: UInt32) {
-        self.init(
-            red: Double((hex >> 16) & 0xFF) / 255,
-            green: Double((hex >> 8) & 0xFF) / 255,
-            blue: Double(hex & 0xFF) / 255
-        )
+        // A few tufts of grass.
+        for x in stride(from: 3, to: columns, by: 7) {
+            let y = horizon + 2 + (x * 5) % 4
+            if y < rows { ink[y * columns + x] = true }
+        }
+
+        return ink
     }
 }
 
