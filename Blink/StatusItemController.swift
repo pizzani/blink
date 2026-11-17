@@ -12,6 +12,9 @@ final class StatusItemController: NSObject {
     private let pauseMenuItem = NSMenuItem()
     private var intervalMenuItems: [NSMenuItem] = []
 
+    private var animationTimer: Timer?
+    private var animationFrame = 0
+
     init(scheduler: ReminderScheduler) {
         self.scheduler = scheduler
         super.init()
@@ -69,10 +72,16 @@ final class StatusItemController: NSObject {
 
     private func render() {
         if let button = statusItem.button {
+            button.title = scheduler.countdownText.map { " \($0)" } ?? ""
+        }
+        // The hand writes while the countdown runs; a static eye shows when it's stopped.
+        if scheduler.countdownText != nil {
+            startAnimation()
+        } else {
+            stopAnimation()
             let image = NSImage(systemSymbolName: scheduler.isPaused ? "eye.slash" : "eye", accessibilityDescription: "Blink")
             image?.isTemplate = true
-            button.image = image
-            button.title = scheduler.countdownText.map { " \($0)" } ?? ""
+            statusItem.button?.image = image
         }
 
         statusMenuItem.title = scheduler.statusText
@@ -80,6 +89,29 @@ final class StatusItemController: NSObject {
         for item in intervalMenuItems {
             item.state = item.tag == scheduler.intervalSeconds ? .on : .off
         }
+    }
+
+    private func startAnimation() {
+        guard animationTimer == nil else { return }
+        animationFrame = 0
+        statusItem.button?.image = PixelWriting.frames[0]
+        // .common mode keeps it animating while the menu is open.
+        let timer = Timer(timeInterval: PixelWriting.frameInterval, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.advanceAnimation() }
+        }
+        timer.tolerance = 0.05
+        RunLoop.main.add(timer, forMode: .common)
+        animationTimer = timer
+    }
+
+    private func stopAnimation() {
+        animationTimer?.invalidate()
+        animationTimer = nil
+    }
+
+    private func advanceAnimation() {
+        animationFrame = (animationFrame + 1) % PixelWriting.frames.count
+        statusItem.button?.image = PixelWriting.frames[animationFrame]
     }
 
     @objc private func selectInterval(_ sender: NSMenuItem) {
