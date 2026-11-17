@@ -4,14 +4,23 @@ import Observation
 @MainActor
 @Observable
 final class ReminderScheduler {
-    static let intervalOptions = [5, 10, 15, 20, 30, 45, 60]
+    /// Reminder intervals in seconds. The 30 s option only exists in Debug builds, for testing.
+    #if DEBUG
+    static let intervalOptions = [30, 5 * 60, 10 * 60, 15 * 60, 20 * 60, 30 * 60, 45 * 60, 60 * 60]
+    #else
+    static let intervalOptions = [5 * 60, 10 * 60, 15 * 60, 20 * 60, 30 * 60, 45 * 60, 60 * 60]
+    #endif
 
-    private static let intervalKey = "intervalMinutes"
+    /// No keyboard/mouse input for this long counts as a break away from the screen.
+    private static let idleThreshold: TimeInterval = 5 * 60
+    private static let idleCheckInterval: TimeInterval = 15
+
+    private static let intervalKey = "intervalSeconds"
     private static let pausedKey = "isPaused"
 
-    var intervalMinutes: Int {
+    var intervalSeconds: Int {
         didSet {
-            UserDefaults.standard.set(intervalMinutes, forKey: Self.intervalKey)
+            UserDefaults.standard.set(intervalSeconds, forKey: Self.intervalKey)
             reschedule()
         }
     }
@@ -23,35 +32,122 @@ final class ReminderScheduler {
         }
     }
 
+    /// Time left until the next reminder, shown next to the menu bar icon.
+    /// `nil` while the countdown is stopped (paused, locked or idle).
+    private(set) var countdownText: String?
+
+    /// First line of the menu: the exact time left, or why the countdown is stopped.
+    private(set) var statusText = ""
+
+    private var isLocked = false
+    private var isIdle = false
+
     private let panel = ReminderPanel()
     private var timer: Timer?
+    private var idleTimer: Timer?
+    private var countdownTimer: Timer?
+    private var activity: NSObjectProtocol?
 
     init() {
         let stored = UserDefaults.standard.integer(forKey: Self.intervalKey)
-        intervalMinutes = stored > 0 ? stored : 20
+        intervalSeconds = Self.intervalOptions.contains(stored) ? stored : 20 * 60
         isPaused = UserDefaults.standard.bool(forKey: Self.pausedKey)
     }
 
     func start() {
+        // Menu bar apps have no visible window, so App Nap would otherwise delay the timers.
+        activity = ProcessInfo.processInfo.beginActivity(
+            options: .userInitiatedAllowingIdleSystemSleep,
+            reason: "Eye-break reminders must fire on time"
+        )
+
         // The screen was off while asleep, so start a fresh interval on wake.
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.reschedule() }
         }
+
+        // Stop counting while the screen is locked, and start fresh on unlock.
+        let distributed = DistributedNotificationCenter.default()
+        distributed.addObserver(forName: .init("com.apple.screenIsLocked"), object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.setLocked(true) }
+        }
+        distributed.addObserver(forName: .init("com.apple.screenIsUnlocked"), object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.setLocked(false) }
+        }
+
+        idleTimer = Timer.scheduledTimer(withTimeInterval: Self.idleCheckInterval, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.checkIdle() }
+        }
+        idleTimer?.tolerance = 5
+
+        // .common mode keeps the countdown ticking while the menu is open.
+        let countdownTimer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.updateCountdown() }
+        }
+        countdownTimer.tolerance = 0.2
+        RunLoop.main.add(countdownTimer, forMode: .common)
+        self.countdownTimer = countdownTimer
+
         reschedule()
     }
 
     func reschedule() {
+        defer { updateCountdown() }
         timer?.invalidate()
         timer = nil
-        guard !isPaused else { return }
-        timer = Timer.scheduledTimer(withTimeInterval: TimeInterval(intervalMinutes * 60), repeats: true) { [weak self] _ in
+        guard !isPaused, !isLocked, !isIdle else { return }
+        let timer = Timer(timeInterval: TimeInterval(intervalSeconds), repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.panel.show() }
         }
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
     }
 
     func sendTest() {
         panel.show()
+    }
+
+    /// The menu bar shows minutes while a minute or more is left, then seconds; the
+    /// menu shows mm:ss. Only assigns on change, so the menu bar redraws at most
+    /// once per displayed unit.
+    private func updateCountdown() {
+        var text: String?
+        let status: String
+        if let timer, timer.isValid {
+            let remaining = max(0, Int(timer.fireDate.timeIntervalSinceNow.rounded(.up)))
+            text = remaining >= 60 ? "\((remaining + 59) / 60)m" : "\(remaining)s"
+            status = String(format: "Next reminder in %d:%02d", remaining / 60, remaining % 60)
+        } else if isPaused {
+            status = "Reminders paused"
+        } else if isIdle {
+            status = "Away — restarts when you're back"
+        } else {
+            status = "Screen locked"
+        }
+        if text != countdownText { countdownText = text }
+        if status != statusText { statusText = status }
+    }
+
+    private func setLocked(_ locked: Bool) {
+        isLocked = locked
+        if locked { panel.close() }
+        reschedule()
+    }
+
+    /// After a long stretch without input the eyes already had a break, so the
+    /// interval stops while away and restarts from zero once the user is back.
+    private func checkIdle() {
+        let anyInput = CGEventType(rawValue: ~0)!
+        let idleSeconds = CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: anyInput)
+
+        if !isIdle, idleSeconds >= Self.idleThreshold {
+            isIdle = true
+            reschedule()
+        } else if isIdle, idleSeconds < Self.idleThreshold {
+            isIdle = false
+            reschedule()
+        }
     }
 }
