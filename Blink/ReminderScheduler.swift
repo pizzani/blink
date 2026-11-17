@@ -75,11 +75,15 @@ final class ReminderScheduler {
             reason: "Eye-break reminders must fire on time"
         )
 
-        // The screen was off while asleep, so start a fresh interval on wake.
+        // The screen was off while asleep, so the eyes already rested: on wake, end any
+        // break in progress (closing the card ends it) and start a fresh interval.
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.reschedule() }
+            MainActor.assumeIsolated {
+                self?.panel.close()
+                self?.reschedule()
+            }
         }
 
         // Stop counting while the screen is locked, and start fresh on unlock.
