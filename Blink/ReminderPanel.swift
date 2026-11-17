@@ -9,6 +9,9 @@ final class ReminderPanel {
 
     private var panel: NSPanel?
 
+    /// Called once each time the card goes away, however it was closed.
+    var onClose: (() -> Void)?
+
     func show() {
         guard panel == nil else { return }
 
@@ -43,6 +46,7 @@ final class ReminderPanel {
     func close() {
         guard let panel else { return }
         self.panel = nil
+        onClose?()
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.25
             panel.animator().alphaValue = 0

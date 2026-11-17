@@ -33,8 +33,11 @@ final class ReminderScheduler {
     }
 
     /// Time left until the next reminder, shown next to the menu bar icon.
-    /// `nil` while the countdown is stopped (paused, locked or idle).
+    /// `nil` while the countdown is stopped (break, paused, locked or idle).
     private(set) var countdownText: String?
+
+    /// True while the reminder card is up. The countdown waits and restarts once it closes.
+    private(set) var isOnBreak = false
 
     /// First line of the menu: the exact time left, or why the countdown is stopped.
     private(set) var statusText = ""
@@ -52,6 +55,7 @@ final class ReminderScheduler {
         let stored = UserDefaults.standard.integer(forKey: Self.intervalKey)
         intervalSeconds = Self.intervalOptions.contains(stored) ? stored : 20 * 60
         isPaused = UserDefaults.standard.bool(forKey: Self.pausedKey)
+        panel.onClose = { [weak self] in self?.endBreak() }
     }
 
     func start() {
@@ -97,16 +101,29 @@ final class ReminderScheduler {
         defer { updateCountdown() }
         timer?.invalidate()
         timer = nil
-        guard !isPaused, !isLocked, !isIdle else { return }
-        let timer = Timer(timeInterval: TimeInterval(intervalSeconds), repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.panel.show() }
+        guard !isOnBreak, !isPaused, !isLocked, !isIdle else { return }
+        let timer = Timer(timeInterval: TimeInterval(intervalSeconds), repeats: false) { [weak self] _ in
+            MainActor.assumeIsolated { self?.startBreak() }
         }
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
     }
 
     func sendTest() {
+        startBreak()
+    }
+
+    private func startBreak() {
+        guard !isOnBreak else { return }
+        isOnBreak = true
+        reschedule()
         panel.show()
+    }
+
+    /// Called when the card closes: its countdown ended, Skip was clicked, or the screen locked.
+    private func endBreak() {
+        isOnBreak = false
+        reschedule()
     }
 
     /// The menu bar shows minutes while a minute or more is left, then seconds; the
@@ -119,6 +136,8 @@ final class ReminderScheduler {
             let remaining = max(0, Int(timer.fireDate.timeIntervalSinceNow.rounded(.up)))
             text = remaining >= 60 ? "\((remaining + 59) / 60)m" : "\(remaining)s"
             status = String(format: "Next reminder in %d:%02d", remaining / 60, remaining % 60)
+        } else if isOnBreak {
+            status = "Time to blink — look away"
         } else if isPaused {
             status = "Reminders paused"
         } else if isIdle {

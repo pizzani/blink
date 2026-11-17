@@ -14,6 +14,21 @@ final class StatusItemController: NSObject {
 
     private var animationTimer: Timer?
     private var animationFrame = 0
+    private var animation: Animation?
+
+    private enum Animation {
+        /// Countdown running: the hand writes scrolls, with the bird running by now and then.
+        case writing
+        /// Break: only the bird, running past again and again.
+        case bird
+
+        @MainActor var frames: [NSImage] {
+            switch self {
+            case .writing: MenuBarAnimation.frames
+            case .bird: PixelBird.frames
+            }
+        }
+    }
 
     init(scheduler: ReminderScheduler) {
         self.scheduler = scheduler
@@ -74,9 +89,12 @@ final class StatusItemController: NSObject {
         if let button = statusItem.button {
             button.title = scheduler.countdownText.map { " \($0)" } ?? ""
         }
-        // The hand writes while the countdown runs; a static eye shows when it's stopped.
-        if scheduler.countdownText != nil {
-            startAnimation()
+        // The hand writes while the countdown runs, the bird runs during a break,
+        // and a static eye shows when the countdown is stopped.
+        if scheduler.isOnBreak {
+            startAnimation(.bird)
+        } else if scheduler.countdownText != nil {
+            startAnimation(.writing)
         } else {
             stopAnimation()
             let image = NSImage(systemSymbolName: scheduler.isPaused ? "eye.slash" : "eye", accessibilityDescription: "Blink")
@@ -91,10 +109,12 @@ final class StatusItemController: NSObject {
         }
     }
 
-    private func startAnimation() {
-        guard animationTimer == nil else { return }
+    private func startAnimation(_ animation: Animation) {
+        guard animation != self.animation else { return }
+        stopAnimation()
+        self.animation = animation
         animationFrame = 0
-        statusItem.button?.image = MenuBarAnimation.frames[0]
+        statusItem.button?.image = animation.frames[0]
         // .common mode keeps it animating while the menu is open.
         let timer = Timer(timeInterval: PixelArt.frameInterval, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.advanceAnimation() }
@@ -107,11 +127,13 @@ final class StatusItemController: NSObject {
     private func stopAnimation() {
         animationTimer?.invalidate()
         animationTimer = nil
+        animation = nil
     }
 
     private func advanceAnimation() {
-        animationFrame = (animationFrame + 1) % MenuBarAnimation.frames.count
-        statusItem.button?.image = MenuBarAnimation.frames[animationFrame]
+        guard let frames = animation?.frames else { return }
+        animationFrame = (animationFrame + 1) % frames.count
+        statusItem.button?.image = frames[animationFrame]
     }
 
     @objc private func selectInterval(_ sender: NSMenuItem) {
