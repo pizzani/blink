@@ -36,7 +36,7 @@ final class ReminderPanel {
         panel.alphaValue = 0
         panel.orderFrontRegardless()
         NSAnimationContext.runAnimationGroup { $0.duration = 0.25; panel.animator().alphaValue = 1 }
-        NSSound(named: "Glass")?.play()
+        NSSound(named: "tweet")?.play()
 
         self.panel = panel
     }
