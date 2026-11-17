@@ -61,3 +61,7 @@ Tools/release.sh
 This builds a universal Release version, zips it and publishes a GitHub Release tagged with the app version (`MARKETING_VERSION` in the project). It needs the [GitHub CLI](https://cli.github.com) (`brew install gh && gh auth login`); without it, the script builds the zip and tells you how to upload it by hand. Bump the version before each new release.
 
 The app icon is generated from the pixel bird with `swift Tools/make-app-icon.swift Blink/Assets.xcassets/AppIcon.appiconset`.
+
+## License
+
+[MIT](LICENSE)
