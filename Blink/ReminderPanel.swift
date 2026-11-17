@@ -76,6 +76,8 @@ private struct ReminderCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            PixelLandscape()
+
             HStack(spacing: 10) {
                 Image(systemName: "eye")
                     .font(.title2)
