@@ -1,0 +1,146 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "Away — restarts when you're back": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausente — recomeça quando você voltar"
+          }
+        }
+      }
+    },
+    "Break length": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duração da pausa"
+          }
+        }
+      }
+    },
+    "Look at something ~6 m (20 ft) away.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Olhe para algo a uns 6 metros de distância."
+          }
+        }
+      }
+    },
+    "Next reminder in %@": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Próximo lembrete em %@"
+          }
+        }
+      }
+    },
+    "Pause reminders": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausar lembretes"
+          }
+        }
+      }
+    },
+    "Quit Blink": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sair do Blink"
+          }
+        }
+      }
+    },
+    "Remind every": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lembrar a cada"
+          }
+        }
+      }
+    },
+    "Reminders paused": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lembretes pausados"
+          }
+        }
+      }
+    },
+    "Resume reminders": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retomar lembretes"
+          }
+        }
+      }
+    },
+    "Screen locked": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tela bloqueada"
+          }
+        }
+      }
+    },
+    "Show reminder now": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar lembrete agora"
+          }
+        }
+      }
+    },
+    "Skip": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pular"
+          }
+        }
+      }
+    },
+    "Time to blink": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hora de piscar"
+          }
+        }
+      }
+    },
+    "Time to blink — look away": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hora de piscar — olhe para longe"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

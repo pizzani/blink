@@ -51,22 +51,22 @@ final class StatusItemController: NSObject {
         menu.addItem(.separator())
 
         intervalMenuItems = addChoiceMenu(
-            to: menu, title: "Remind every", options: ReminderScheduler.intervalOptions, action: #selector(selectInterval(_:))
+            to: menu, title: String(localized: "Remind every"), options: ReminderScheduler.intervalOptions, action: #selector(selectInterval(_:))
         )
         breakMenuItems = addChoiceMenu(
-            to: menu, title: "Break length", options: ReminderScheduler.breakOptions, action: #selector(selectBreak(_:))
+            to: menu, title: String(localized: "Break length"), options: ReminderScheduler.breakOptions, action: #selector(selectBreak(_:))
         )
 
         pauseMenuItem.target = self
         pauseMenuItem.action = #selector(togglePause)
         menu.addItem(pauseMenuItem)
 
-        let showItem = NSMenuItem(title: "Show reminder now", action: #selector(showReminder), keyEquivalent: "")
+        let showItem = NSMenuItem(title: String(localized: "Show reminder now"), action: #selector(showReminder), keyEquivalent: "")
         showItem.target = self
         menu.addItem(showItem)
 
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quit Blink", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: String(localized: "Quit Blink"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 
         return menu
     }
@@ -115,7 +115,7 @@ final class StatusItemController: NSObject {
         }
 
         statusMenuItem.title = scheduler.statusText
-        pauseMenuItem.title = scheduler.isPaused ? "Resume reminders" : "Pause reminders"
+        pauseMenuItem.title = scheduler.isPaused ? String(localized: "Resume reminders") : String(localized: "Pause reminders")
         for item in intervalMenuItems {
             item.state = item.tag == scheduler.intervalSeconds ? .on : .off
         }

@@ -149,15 +149,16 @@ final class ReminderScheduler {
         if let timer, timer.isValid {
             let remaining = max(0, Int(timer.fireDate.timeIntervalSinceNow.rounded(.up)))
             text = remaining >= 60 ? "\((remaining + 59) / 60)m" : "\(remaining)s"
-            status = String(format: "Next reminder in %d:%02d", remaining / 60, remaining % 60)
+            let time = String(format: "%d:%02d", remaining / 60, remaining % 60)
+            status = String(localized: "Next reminder in \(time)")
         } else if isOnBreak {
-            status = "Time to blink — look away"
+            status = String(localized: "Time to blink — look away")
         } else if isPaused {
-            status = "Reminders paused"
+            status = String(localized: "Reminders paused")
         } else if isIdle {
-            status = "Away — restarts when you're back"
+            status = String(localized: "Away — restarts when you're back")
         } else {
-            status = "Screen locked"
+            status = String(localized: "Screen locked")
         }
         if text != countdownText { countdownText = text }
         if status != statusText { statusText = status }
